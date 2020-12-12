@@ -19,12 +19,14 @@ we talked about in class:
 """
 # Have you ever *not* needed NumPy?
 import numpy as np
+import pandas as pd
 
 # We need to import a bunch of things from PyTorch
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
+
 
 # tqdm gives us nice progress bars, which provide a huge quality-of-life boost,
 # so it's worth mentioning here.
@@ -36,6 +38,21 @@ from tqdm import tqdm
 # device, and that things are on the CPU by default.
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
+df = pd.read_csv('./train_2016.csv', sep=',', encoding='unicode_escape', thousands = ",")
+X = df[["MedianIncome","MigraRate", "BirthRate", "BachelorRate", "UnemploymentRate"]]
+X = X.to_numpy()
+
+Y = df[["DEM", "GOP"]]
+Y = Y.to_numpy()
+Y = Y[:,0] - Y[:,1]
+Y[Y > 0] = 1
+Y[Y < 0] = 0
+
+# The set we want to predict
+P = pd.read_csv('./test_2016_no_label.csv', sep=',', encoding='unicode_escape', thousands = ",")
+P = P[["MedianIncome","MigraRate", "BirthRate", "BachelorRate", "UnemploymentRate"]]
+P = P.to_numpy()
+
 # Setting a random seed means we can reproduce our results easily. In my
 # understanding, this is generally good practice.
 np.random.seed(1701)
@@ -44,8 +61,8 @@ torch.manual_seed(1701)
 # Here I define a bunch of constants that'll be needed later on. I've chosen the
 # first two arbitrarily; the last three are set to values that are probably
 # decent across a wide range of tasks.
-input_dim = 42          # This is the dimensionality of the inputs X
-output_dim = 314159     # This is the number of classes in Y
+input_dim = X.shape[0]          # This is the dimensionality of the inputs X
+output_dim = Y.size   # This is the number of classes in Y
 num_workers = 4         # We want to parallelize loading data during training.
                         #   Otherwise, it's possible for moving data to model to
                         #   become a bottleneck in performance!
@@ -58,25 +75,33 @@ num_epochs = 100        # The number of complete iterations over the dataset
 save_file = "best_model.pt" # It's helpful to save the best-performing model
                             #   throughout training...
 
+
+print(X[1])
+print(X[1] + Y[1])
+
+
 # 1.1---get the Dataset. A Dataset should extend PyTorch's base class, and needs
 # to do two things:
 # a) implement the __getitem__() method. This takes in an index to the data and
 #       returns the x- and y-values of the ith datapoint, often as tensors.
 # b) implement the __len__() method. This is just the amount of data in the
 #       dataset.
-class ToyDataset(Dataset):
+
+
+class CountyDataset(Dataset):
     """An example dataset."""
     
-    def __init__(self):
-        pass
+    def __init__(self, X, Y):
+        self.X = X
+        self.Y = Y
     
     def __getitem__(self, i):
-        raise NotImplementedError()
+        return X[i], Y[i]
     
     def __len__(self):
-        raise NotImplementedError()
+        return X.shape[0]
         
-train_dataset = ToyDataset()
+train_dataset = CountyDataset(X, Y)
 
 # 1.2---get a DataLoader. This wraps a Dataset and allows you to iterate through
 # it. It's also where you can implement *a lot* of performance optimizations.

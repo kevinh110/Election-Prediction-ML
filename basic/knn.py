@@ -5,7 +5,7 @@ import sklearn.preprocessing as preproc
 from sklearn import svm
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import cross_val_score
-
+from sklearn.neighbors import KNeighborsClassifier
 
 def weighted_accuracy(pred, true):
     assert(len(pred) == len(true))
@@ -26,9 +26,7 @@ def weighted_accuracy(pred, true):
 
 df = pd.read_csv('./train_2016.csv', sep=',', encoding='unicode_escape', thousands = ",")
 
-
-# Removed MedianIncome
-X = df[["MigraRate", "BirthRate", "BachelorRate", "UnemploymentRate"]]
+X = df[["MedianIncome","MigraRate", "BirthRate", "BachelorRate", "UnemploymentRate"]]
 X = X.to_numpy()
 
 n, m = X.shape
@@ -42,61 +40,50 @@ Y[Y < 0] = 0
 
 # The set we want to predict
 P = pd.read_csv('./test_2016_no_label.csv', sep=',', encoding='unicode_escape', thousands = ",")
-P = P[["MigraRate", "BirthRate", "BachelorRate", "UnemploymentRate"]]
+P = P[["MedianIncome","MigraRate", "BirthRate", "BachelorRate", "UnemploymentRate"]]
 P = P.to_numpy()
 
 
-scaler = preproc.StandardScaler(copy=False)
-scaler.fit_transform(X)
-scaler.fit_transform(P)
-print(X)
-print(Y)
 
-
-# Cross Validation
-X_train, X_val, Y_train, Y_val = train_test_split(X, Y, test_size=0.4, random_state=0)
-kernels = ["linear", "poly", "rbf", "sigmoid", "rbf"]
-
-C = [1]
-for i in range(1,40):
-    C.append(i * 5)
-
-optSVM = None
-optScore = 0
-optK = None
-optC = None
-
-for c in C:
-    for k in kernels:
-        clf = svm.SVC(kernel = k, C = c)
-        clf.fit(X_train, Y_train)
-        XX = clf.predict(X_val)
-        s = weighted_accuracy(XX, Y_val)
-        if s >= optScore:
-            optSVM = clf
-            optScore = s
-            optK = k
-            optC = c
-        
-        
-print("The optimal score: ", optScore)
-print("The optimal kernel: ", optK)
-print("The optimal C: ", C)
-
-# clf = svm.SVC()
-# clf.fit(X_train, Y_train)
+# Feature Selection
 
 
 
-preds = optSVM.predict(P)
+#KNN
+X_train, X_val, Y_train, Y_val = train_test_split(X, Y, test_size=0.4)
+
+optScore = -1
+optClass = None
+num = X_train.shape[0]
+for k in range(1, num, num//100):
+    neigh = KNeighborsClassifier(n_neighbors=k)
+    neigh.fit(X_train, Y_train)
+    val_preds = neigh.predict(X_val)
+    score = weighted_accuracy(val_preds, Y_val)
+
+    if (score >= optScore):
+        optScore = score
+        optClass = neigh
+    
+
+print(optScore)
+
+# KNN Classifier
+
+
+
+
+preds = optClass.predict(P)
 
 print(np.sum(preds))
 
 # Output CSV
 out = pd.read_csv('./sampleSubmission.csv', sep=',', encoding='unicode_escape', thousands = ",")
-
-
-
 out[["Result"]] = preds.reshape(-1,1)
 out = out[["FIPS", "Result"]]
-out.to_csv(path_or_buf="./results.csv", index = False)
+out.to_csv(path_or_buf="./knn_results.csv", index = False)
+
+
+
+
+
