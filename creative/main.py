@@ -26,22 +26,23 @@ def weighted_accuracy(pred, true):
 
 
 def learner(X, Y):
-    X_train, X_val, Y_train, Y_val = train_test_split(X, Y, test_size=0.4)
+    X_train, X_val, Y_train, Y_val = train_test_split(X, Y, test_size=0.3)
 
     optSVM = None
     optScore = 0
     optC = None
 
     k = 'rbf'
-    c = 50
 
-    clf = svm.SVC(kernel=k, C=c)
-    clf.fit(X_train, Y_train)
-    XX = clf.predict(X_val)
-    s = weighted_accuracy(XX, Y_val)
-    optSVM = clf
-    optScore = s
-    optC = c
+    for c in range(1, 200, 5):
+        clf = svm.SVC(kernel=k, C=c)
+        clf.fit(X_train, Y_train)
+        XX = clf.predict(X_val)
+        s = weighted_accuracy(XX, Y_val)
+        if s >= optScore:
+            optSVM = clf
+            optScore = s
+            optC = c
 
     return optSVM, optScore, optC
 
@@ -86,12 +87,16 @@ n, m = X1.shape
 
 clf1, score1, c1 = learner(X1, Y)
 print("The optimal score: ", score1)
+print("The optimal c: ", c1)
 
 clf2, score2, c2 = learner(X2, Y)
 print("The optimal score: ", score2)
+print("The optimal c: ", c2)
+
 
 clf3, score3, c3 = learner(X3, Y)
 print("The optimal score: ", score3)
+print("The optimal c: ", c3)
 
 
 ############## Make Predictions #################
